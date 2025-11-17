@@ -260,7 +260,8 @@ def compute_case_slot_world_xy(case_id: int, cols: int = 4, rows: int = 2,
 
 # Build object list and target placements based on the provided figure
 # Initial arrangement (1..8):
-# 1: box_4, 2: box_5, 3: box_6, 4: box_2, 5: cylinder_0, 6: box_3, 7: triangle, 8: box_0
+# 1: box_4, 2: box_5, 3: box_6, 4: box_2, 5: cylinder_0, 6: box_3, 7: box_0, 8: triangle
+# Triangle is moved to the last position as requested
 objects_in_order = [
     ("box_4", box_4),
     ("box_5", box_5),
@@ -268,12 +269,22 @@ objects_in_order = [
     ("box_2", box_2),
     ("cylinder_0", cylinder_0),
     ("box_3", box_3),
-    ("triangle", triangle),
     ("box_0", box_0),
+    ("triangle", triangle),
 ]
 
-# Target XY are computed adaptively from the current case pose and size
-target_xy_list = compute_case_slot_world_xy(case)
+# Target XY coordinates from the provided image specification
+# These are relative to case position (0.0, 0.3) and adjusted for case orientation
+target_xy_list = [
+    (-0.15, 0.35),  # 1: box_4
+    (-0.15, 0.25),  # 2: box_5
+    (0.15, 0.25),   # 3: box_6
+    (0.05, 0.35),   # 4: box_2
+    (-0.05, 0.25),  # 5: cylinder_0
+    (-0.05, 0.35),  # 6: box_3
+    (0.05, 0.25),   # 7: box_0
+    (0.15, 0.35),   # 8: triangle
+]
 
 # Heights and motion parameters
 hover_z = 0.86           # high above table but a bit closer for faster approach
