@@ -200,6 +200,64 @@ go_home(robot, arm_joint_indices)
 set_gripper(robot, finger_joint_indices, width=0.038)  # open
 step_for_seconds(0.3)
 
+# ----------------------------
+# Case slot layout (adaptive)
+# ----------------------------
+# NOTE: The case mesh (case.obj/case.dae) does not encode slot coordinates as parameters.
+#       We therefore compute them from the case's current size (AABB) and pose, making
+#       the target positions robust to case placement and rotation.
+
+def compute_case_slot_world_xy(case_id: int, cols: int = 4, rows: int = 2,
+                               margin_x_ratio: float = 0.22, margin_y_ratio: float = 0.28):
+    """Compute world XY of slot centers as a grid inside case footprint.
+
+    The grid is defined in the case local frame using AABB size, then transformed
+    to world coordinates with the case base pose.
+    """
+    (aabb_min_x, aabb_min_y, aabb_min_z), (aabb_max_x, aabb_max_y, aabb_max_z) = p.getAABB(case_id)
+    size_x = max(1e-6, aabb_max_x - aabb_min_x)
+    size_y = max(1e-6, aabb_max_y - aabb_min_y)
+    half_x = size_x * 0.5
+    half_y = size_y * 0.5
+
+    # Inner rectangle margins (tunable to match actual holes)
+    margin_x = size_x * margin_x_ratio
+    margin_y = size_y * margin_y_ratio
+
+    inner_min_x = -half_x + margin_x
+    inner_max_x =  half_x - margin_x
+    inner_min_y = -half_y + margin_y
+    inner_max_y =  half_y - margin_y
+
+    step_x = (inner_max_x - inner_min_x) / max(cols - 1, 1)
+    step_y = (inner_max_y - inner_min_y) / max(rows - 1, 1)
+
+    xs_local = [inner_min_x + i * step_x for i in range(cols)]
+    ys_local = [inner_min_y + j * step_y for j in range(rows)]
+
+    base_pos, base_orn = p.getBasePositionAndOrientation(case_id)
+
+    def to_world(x_l: float, y_l: float):
+        pos_w, _ = p.multiplyTransforms(base_pos, base_orn, [x_l, y_l, 0.0], [0, 0, 0, 1])
+        return (pos_w[0], pos_w[1])
+
+    # Order chosen to match original mapping used for objects_in_order
+    bottom = ys_local[0]
+    top = ys_local[-1]
+    x0, x1, x2, x3 = xs_local[0], xs_local[1], xs_local[2], xs_local[3]
+
+    result = [
+        to_world(x0, top),     # 1
+        to_world(x0, bottom),  # 2
+        to_world(x3, bottom),  # 3
+        to_world(x2, top),     # 4
+        to_world(x1, bottom),  # 5
+        to_world(x1, top),     # 6
+        to_world(x2, bottom),  # 7
+        to_world(x3, top),     # 8
+    ]
+    return result
+
 # Build object list and target placements based on the provided figure
 # Initial arrangement (1..8):
 # 1: box_4, 2: box_5, 3: box_6, 4: box_2, 5: cylinder_0, 6: box_3, 7: triangle, 8: box_0
@@ -214,17 +272,8 @@ objects_in_order = [
     ("box_0", box_0),
 ]
 
-# Target XY for indices 1..8 from the image/table (Z will be decided around case top)
-target_xy_list = [
-    (-0.15, 0.35),  # 1
-    (-0.15, 0.25),  # 2
-    (0.15, 0.25),   # 3
-    (0.05, 0.35),   # 4
-    (-0.05, 0.25),  # 5 (assign cylinder here)
-    (-0.05, 0.35),  # 6
-    (0.05, 0.25),   # 7 (assign triangle here)
-    (0.15, 0.35),   # 8
-]
+# Target XY are computed adaptively from the current case pose and size
+target_xy_list = compute_case_slot_world_xy(case)
 
 # Heights and motion parameters
 hover_z = 0.86           # high above table but a bit closer for faster approach
