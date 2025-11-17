@@ -227,10 +227,10 @@ target_xy_list = [
 ]
 
 # Heights and motion parameters
-hover_z = 0.90           # high above table
-grasp_z_offset = 0.04    # extra below object base z (negative not used; we use base z + offset)
-place_z_offset = 0.075   # slightly above case top when releasing
-approach_time = 1.0
+hover_z = 0.86           # high above table but a bit closer for faster approach
+grasp_z_offset = 0.04    # legacy (kept for fallback); main logic uses AABB-based height
+place_z_offset = 0.065   # slightly above case top when releasing
+approach_time = 0.8
 
 # Helper to move to a Cartesian pose with via-points
 def move_to_pose(target_pos, orn, via_z_first: float = None):
@@ -247,27 +247,56 @@ def move_to_pose(target_pos, orn, via_z_first: float = None):
         move_ee_linear(robot, arm_joint_indices, ee_link_index, start, target_pos, orn, duration=approach_time)
 
 
+def get_body_aabb(body_id: int):
+    """Return (aabb_min, aabb_max) of a body in world coordinates."""
+    return p.getAABB(body_id, -1)
+
+
+def compute_pick_heights(body_id: int, name: str):
+    """Compute pre-touch and grasp Z based on object's world AABB."""
+    aabb_min, aabb_max = get_body_aabb(body_id)
+    bottom_z = aabb_min[2]
+    top_z = aabb_max[2]
+    height = max(0.005, top_z - bottom_z)
+    # Choose grasp depth ratio per shape for better stability
+    ratio = 0.55
+    if "cylinder" in name:
+        ratio = 0.60
+    if "triangle" in name:
+        ratio = 0.50
+    grasp_z = bottom_z + height * ratio
+    # Safety clamps
+    grasp_z = max(bottom_z + 0.012, min(grasp_z, top_z - 0.004))
+    pre_touch_z = top_z + 0.008
+    return pre_touch_z, grasp_z
+
+
 # Execute pick-and-place for each object
 for idx, (name, body_id) in enumerate(objects_in_order):
     # Get current object base pose
     obj_pos, obj_orn = p.getBasePositionAndOrientation(body_id)
     pick_xy = obj_pos[:2]
     pick_above = [pick_xy[0], pick_xy[1], hover_z]
-    pick_down = [pick_xy[0], pick_xy[1], obj_pos[2] + grasp_z_offset]
+    pre_z, grasp_z = compute_pick_heights(body_id, name)
+    pick_pre = [pick_xy[0], pick_xy[1], pre_z]
+    pick_down = [pick_xy[0], pick_xy[1], grasp_z]
 
     # Move above object -> descend -> grasp -> lift
     move_to_pose(pick_above, downward_orn, via_z_first=hover_z)
 
     # For triangle piece, slow down and use a slightly higher grasp to improve stability
     if name == "triangle":
-        pick_down = [pick_down[0], pick_down[1], pick_down[2] + 0.01]
-        approach_time = 1.4
+        approach_time = 1.2
     else:
-        approach_time = 1.0
+        approach_time = 0.8
 
+    # Two-step descent for reliable alignment
+    move_to_pose(pick_pre, downward_orn)
     move_to_pose(pick_down, downward_orn)
-    set_gripper(robot, finger_joint_indices, width=0.0)  # close
+    set_gripper(robot, finger_joint_indices, width=0.0)  # close to grasp
     step_for_seconds(0.6)
+    move_to_pose(pick_pre, downward_orn)
+    step_for_seconds(0.1)
     move_to_pose(pick_above, downward_orn)
     step_for_seconds(0.2)
 
@@ -282,11 +311,11 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     move_to_pose(place_down, downward_orn)
     step_for_seconds(0.1)
     # Slight shake before release helps seating
-    jitter = 0.01
+    jitter = 0.006
     for dx in [-jitter, jitter, 0.0]:
         pos_now, _ = get_ee_world_pose(robot, ee_link_index)
         move_ee_linear(robot, arm_joint_indices, ee_link_index, pos_now, [pos_now[0] + dx, pos_now[1], pos_now[2]], downward_orn, duration=0.2, steps=40)
-    set_gripper(robot, finger_joint_indices, width=0.038)  # open
+    set_gripper(robot, finger_joint_indices, width=0.04)  # open
     step_for_seconds(0.4)
     move_to_pose(place_above, downward_orn)
     step_for_seconds(0.2)
