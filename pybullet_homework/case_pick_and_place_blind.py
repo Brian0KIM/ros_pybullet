@@ -273,18 +273,17 @@ objects_in_order = [
     ("triangle", triangle),
 ]
 
-# Target XY coordinates from the provided image specification
-# Adjusted: y values increased by 0.02 to move blocks away from robot
+# Target XY coordinates adjusted based on testing results
 # box_0 and triangle targets swapped to match their new picking order
 target_xy_list = [
-    (-0.15, 0.37),  # 1: box_4
-    (-0.15, 0.27),  # 2: box_5
-    (0.15, 0.27),   # 3: box_6 (will be rotated 90 degrees)
-    (0.05, 0.37),   # 4: box_2
-    (-0.05, 0.27),  # 5: cylinder_0
-    (-0.05, 0.37),  # 6: box_3
-    (0.15, 0.37),   # 7: box_0 (was object 8 initially)
-    (0.05, 0.27),   # 8: triangle (was object 7 initially)
+    (-0.15, 0.39),  # 1: box_4 (moved further from robot)
+    (-0.15, 0.27),  # 2: box_5 (success)
+    (0.15, 0.27),   # 3: box_6 (will be rotated 90 degrees after picking)
+    (0.07, 0.39),   # 4: box_2 (moved right and away from robot)
+    (-0.05, 0.27),  # 5: cylinder_0 (success)
+    (-0.05, 0.37),  # 6: box_3 (success)
+    (0.17, 0.39),   # 7: box_0 (moved right and away from robot)
+    (0.05, 0.27),   # 8: triangle (pick failure - to be resolved later)
 ]
 
 # Heights and motion parameters
@@ -342,16 +341,8 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     pick_pre = [pick_xy[0], pick_xy[1], pre_z]
     pick_down = [pick_xy[0], pick_xy[1], grasp_z]
 
-    # Determine gripper orientation for picking
-    pick_orn = downward_orn
-    
-    # For box_6 (3rd object), rotate gripper 90 degrees for proper placement
-    if name == "box_6":
-        # Rotate gripper -90 degrees around z-axis for natural movement
-        pick_orn = p.getQuaternionFromEuler([np.pi, 0.0, -np.pi/2])
-    
     # Move above object -> descend -> grasp -> lift
-    move_to_pose(pick_above, pick_orn, via_z_first=hover_z)
+    move_to_pose(pick_above, downward_orn, via_z_first=hover_z)
 
     # For triangle piece, slow down and use a slightly higher grasp to improve stability
     if name == "triangle":
@@ -360,14 +351,24 @@ for idx, (name, body_id) in enumerate(objects_in_order):
         approach_time = 0.8
 
     # Two-step descent for reliable alignment
-    move_to_pose(pick_pre, pick_orn)
-    move_to_pose(pick_down, pick_orn)
+    move_to_pose(pick_pre, downward_orn)
+    move_to_pose(pick_down, downward_orn)
     set_gripper(robot, finger_joint_indices, width=0.0)  # close to grasp
     step_for_seconds(0.6)
-    move_to_pose(pick_pre, pick_orn)
+    move_to_pose(pick_pre, downward_orn)
     step_for_seconds(0.1)
-    move_to_pose(pick_above, pick_orn)
+    move_to_pose(pick_above, downward_orn)
     step_for_seconds(0.2)
+    
+    # For box_6 (3rd object), rotate gripper 90 degrees after picking
+    place_orn = downward_orn
+    if name == "box_6":
+        # Rotate gripper -90 degrees around z-axis for proper placement
+        place_orn = p.getQuaternionFromEuler([np.pi, 0.0, -np.pi/2])
+        # Smoothly rotate gripper while holding the object
+        curr_pos, _ = get_ee_world_pose(robot, ee_link_index)
+        move_ee_linear(robot, arm_joint_indices, ee_link_index, curr_pos, curr_pos, place_orn, duration=0.6, steps=60)
+        step_for_seconds(0.2)
 
     # Determine place target
     tgt_xy = target_xy_list[idx]
@@ -376,23 +377,24 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     place_down = [tgt_xy[0], tgt_xy[1], case_pos[2] + place_z_offset]
 
     # Move above case slot -> descend -> release -> retreat
-    move_to_pose(place_above, pick_orn, via_z_first=hover_z)
-    move_to_pose(place_down, pick_orn)
+    move_to_pose(place_above, place_orn, via_z_first=hover_z)
+    move_to_pose(place_down, place_orn)
     step_for_seconds(0.1)
     # Slight shake before release helps seating
     jitter = 0.006
     for dx in [-jitter, jitter, 0.0]:
         pos_now, _ = get_ee_world_pose(robot, ee_link_index)
-        move_ee_linear(robot, arm_joint_indices, ee_link_index, pos_now, [pos_now[0] + dx, pos_now[1], pos_now[2]], pick_orn, duration=0.2, steps=40)
+        move_ee_linear(robot, arm_joint_indices, ee_link_index, pos_now, [pos_now[0] + dx, pos_now[1], pos_now[2]], place_orn, duration=0.2, steps=40)
     set_gripper(robot, finger_joint_indices, width=0.04)  # open
     step_for_seconds(0.4)
-    move_to_pose(place_above, pick_orn)
+    move_to_pose(place_above, place_orn)
     step_for_seconds(0.2)
     
     # For box_6, return gripper to normal orientation after placing
     if name == "box_6":
-        move_to_pose(place_above, downward_orn)
-        step_for_seconds(0.3)
+        curr_pos, _ = get_ee_world_pose(robot, ee_link_index)
+        move_ee_linear(robot, arm_joint_indices, ee_link_index, curr_pos, curr_pos, downward_orn, duration=0.6, steps=60)
+        step_for_seconds(0.2)
 
 # Return to home and idle visualization
 go_home(robot, arm_joint_indices)
