@@ -334,7 +334,7 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     obj_pos, obj_orn = p.getBasePositionAndOrientation(body_id)
     pick_xy = obj_pos[:2]
     
-    # Special handling for triangle: apply position offset (from step2_hw.cpp)
+    # Special handling for triangle: apply position offset 
     if name == "triangle":
         pick_xy = (pick_xy[0] + 0.00625, pick_xy[1])
     
@@ -343,7 +343,7 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     pick_pre = [pick_xy[0], pick_xy[1], pre_z]
     pick_down = [pick_xy[0], pick_xy[1], grasp_z]
 
-    # Determine gripper orientation for picking (reference: step2_hw.cpp)
+    # Determine gripper orientation for picking 
     pick_orn = downward_orn
     if name == "triangle":
         # Triangle: grasp at 45 degrees (π/4)
@@ -359,7 +359,7 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     move_to_pose(pick_pre, pick_orn)
     move_to_pose(pick_down, pick_orn)
     
-    # Special gripper width for triangle (from step2_hw.cpp: 0.0175)
+    # Special gripper width for triangle 
     if name == "triangle":
         set_gripper(robot, finger_joint_indices, width=0.0175)
     else:
@@ -383,7 +383,7 @@ for idx, (name, body_id) in enumerate(objects_in_order):
         move_ee_linear(robot, arm_joint_indices, ee_link_index, curr_pos, curr_pos, place_orn, duration=0.6, steps=60)
         step_for_seconds(0.2)
     
-    # For triangle, rotate to placement yaw (reference: step2_hw.cpp place_yaw = -π/4)
+    # For triangle, rotate to placement yaw 
     if name == "triangle":
         place_orn = p.getQuaternionFromEuler([np.pi, 0.0, -np.pi/4.0])
         # Smoothly rotate gripper while holding the object
