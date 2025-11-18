@@ -186,7 +186,7 @@ def freeze_body_to_world(body_id: int):
 # Main pick-and-place routine
 # ----------------------------
 
-# Mark TODO: Fix case wobble (allowed)
+# Fix case wobble (allowed)
 freeze_body_to_world(case)
 
 # Acquire indices and EE link
@@ -203,9 +203,6 @@ step_for_seconds(0.3)
 # ----------------------------
 # Case slot layout (adaptive)
 # ----------------------------
-# NOTE: The case mesh (case.obj/case.dae) does not encode slot coordinates as parameters.
-#       We therefore compute them from the case's current size (AABB) and pose, making
-#       the target positions robust to case placement and rotation.
 
 def compute_case_slot_world_xy(case_id: int, cols: int = 4, rows: int = 2,
                                margin_x_ratio: float = 0.22, margin_y_ratio: float = 0.28):
@@ -220,7 +217,7 @@ def compute_case_slot_world_xy(case_id: int, cols: int = 4, rows: int = 2,
     half_x = size_x * 0.5
     half_y = size_y * 0.5
 
-    # Inner rectangle margins (tunable to match actual holes)
+ 
     margin_x = size_x * margin_x_ratio
     margin_y = size_y * margin_y_ratio
 
@@ -241,7 +238,7 @@ def compute_case_slot_world_xy(case_id: int, cols: int = 4, rows: int = 2,
         pos_w, _ = p.multiplyTransforms(base_pos, base_orn, [x_l, y_l, 0.0], [0, 0, 0, 1])
         return (pos_w[0], pos_w[1])
 
-    # Order chosen to match original mapping used for objects_in_order
+
     bottom = ys_local[0]
     top = ys_local[-1]
     x0, x1, x2, x3 = xs_local[0], xs_local[1], xs_local[2], xs_local[3]
@@ -258,10 +255,10 @@ def compute_case_slot_world_xy(case_id: int, cols: int = 4, rows: int = 2,
     ]
     return result
 
-# Build object list and target placements based on the provided figure
+
 # Initial arrangement (1..8):
 # 1: box_4, 2: box_5, 3: box_6, 4: box_2, 5: cylinder_0, 6: box_3, 7: box_0, 8: triangle
-# Triangle is moved to the last position as requested
+
 objects_in_order = [
     ("box_4", box_4),
     ("box_5", box_5),
@@ -273,23 +270,23 @@ objects_in_order = [
     ("triangle", triangle),
 ]
 
-# Target XY coordinates adjusted based on testing results
-# box_0 and triangle targets swapped to match their new picking order
+
+
 target_xy_list = [
-    (-0.16, 0.4),  # 1: box_4 (moved further from robot)
-    (-0.15, 0.26),  # 2: box_5 (success)
-    (0.16, 0.26),   # 3: box_6 (will be rotated 90 degrees after picking)
-    (0.05, 0.4),   # 4: box_2 (moved right and away from robot)
-    (-0.05, 0.27),  # 5: cylinder_0 (success)
-    (-0.05, 0.38),  # 6: box_3 (success)
-    (0.155, 0.365),   # 7: box_0 (moved right and away from robot)
-    (0.05, 0.27),   # 8: triangle (pick failure - to be resolved later)
+    (-0.16, 0.4),  # 1: box_4 
+    (-0.15, 0.26),  # 2: box_5 
+    (0.16, 0.26),   # 3: box_6 
+    (0.05, 0.4),   # 4: box_2 
+    (-0.05, 0.27),  # 5: cylinder_0 
+    (-0.05, 0.38),  # 6: box_3 
+    (0.155, 0.365),   # 7: box_0 
+    (0.05, 0.27),   # 8: triangle 
 ]
 
 # Heights and motion parameters
-hover_z = 0.86           # high above table but a bit closer for faster approach
-grasp_z_offset = 0.04    # legacy (kept for fallback); main logic uses AABB-based height
-place_z_offset = 0.065   # slightly above case top when releasing
+hover_z = 0.86           
+grasp_z_offset = 0.04    
+place_z_offset = 0.065   
 approach_time = 0.8
 
 # Helper to move to a Cartesian pose with via-points
@@ -380,7 +377,7 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     move_to_pose(place_above, place_orn, via_z_first=hover_z)
     move_to_pose(place_down, place_orn)
     step_for_seconds(0.3)  # Wait for stability before opening gripper
-    # Removed jitter motion for more precise placement
+  
     set_gripper(robot, finger_joint_indices, width=0.04)  # open
     step_for_seconds(0.5)  # Wait for block to settle after release
     move_to_pose(place_above, place_orn)
