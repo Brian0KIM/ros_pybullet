@@ -276,10 +276,10 @@ objects_in_order = [
 # Target XY coordinates adjusted based on testing results
 # box_0 and triangle targets swapped to match their new picking order
 target_xy_list = [
-    (-0.16, 0.4),  # 1: box_4 (moved further from robot)
+    (-0.15, 0.4),  # 1: box_4 (moved further from robot)
     (-0.15, 0.27),  # 2: box_5 (success)
-    (0.16, 0.26),   # 3: box_6 (will be rotated 90 degrees after picking)
-    (0.04, 0.395),   # 4: box_2 (moved right and away from robot)
+    (0.15, 0.26),   # 3: box_6 (will be rotated 90 degrees after picking)
+    (0.05, 0.395),   # 4: box_2 (moved right and away from robot)
     (-0.05, 0.27),  # 5: cylinder_0 (success)
     (-0.05, 0.37),  # 6: box_3 (success)
     (0.15, 0.37),   # 7: box_0 (moved right and away from robot)
@@ -379,14 +379,10 @@ for idx, (name, body_id) in enumerate(objects_in_order):
     # Move above case slot -> descend -> release -> retreat
     move_to_pose(place_above, place_orn, via_z_first=hover_z)
     move_to_pose(place_down, place_orn)
-    step_for_seconds(0.1)
-    # Slight shake before release helps seating
-    jitter = 0.006
-    for dx in [-jitter, jitter, 0.0]:
-        pos_now, _ = get_ee_world_pose(robot, ee_link_index)
-        move_ee_linear(robot, arm_joint_indices, ee_link_index, pos_now, [pos_now[0] + dx, pos_now[1], pos_now[2]], place_orn, duration=0.2, steps=40)
+    step_for_seconds(0.3)  # Wait for stability before opening gripper
+    # Removed jitter motion for more precise placement
     set_gripper(robot, finger_joint_indices, width=0.04)  # open
-    step_for_seconds(0.4)
+    step_for_seconds(0.5)  # Wait for block to settle after release
     move_to_pose(place_above, place_orn)
     step_for_seconds(0.2)
     
