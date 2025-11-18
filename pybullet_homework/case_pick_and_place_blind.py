@@ -280,7 +280,7 @@ target_xy_list = [
     (-0.05, 0.27),  # 5: cylinder_0 
     (-0.05, 0.38),  # 6: box_3 
     (0.155, 0.365),   # 7: box_0 
-    (0.06, 0.263),   # 8: triangle 
+    (0.06, 0.2625),   # 8: triangle 
 ]
 
 # Heights and motion parameters
