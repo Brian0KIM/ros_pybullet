@@ -186,22 +186,22 @@ def freeze_body_to_world(body_id: int):
 # Main pick-and-place routine
 # ----------------------------
 
-# Fix case wobble (allowed)
+# Fix case 
 freeze_body_to_world(case)
 
-# Acquire indices and EE link
+
 arm_joint_indices, finger_joint_indices, ee_link_index = get_panda_indices(robot)
 
-# Orientation: gripper facing down
+
 downward_orn = p.getQuaternionFromEuler([np.pi, 0.0, 0.0])
 
-# Prepare
+
 go_home(robot, arm_joint_indices)
 set_gripper(robot, finger_joint_indices, width=0.038)  # open
 step_for_seconds(0.3)
 
 # ----------------------------
-# Case slot layout (adaptive)
+# Case slot layout
 # ----------------------------
 
 def compute_case_slot_world_xy(case_id: int, cols: int = 4, rows: int = 2,
