@@ -277,10 +277,10 @@ objects_in_order = [
 # box_0 and triangle targets swapped to match their new picking order
 target_xy_list = [
     (-0.16, 0.4),  # 1: box_4 (moved further from robot)
-    (-0.15, 0.27),  # 2: box_5 (success)
-    (0.16, 0.27),   # 3: box_6 (will be rotated 90 degrees after picking)
-    (0.05, 0.4),   # 4: box_2 (moved right and away from robot)
-    (-0.05, 0.26),  # 5: cylinder_0 (success)
+    (-0.15, 0.26),  # 2: box_5 (success)
+    (0.16, 0.26),   # 3: box_6 (will be rotated 90 degrees after picking)
+    (0.04, 0.4),   # 4: box_2 (moved right and away from robot)
+    (-0.05, 0.27),  # 5: cylinder_0 (success)
     (-0.05, 0.39),  # 6: box_3 (success)
     (0.15, 0.37),   # 7: box_0 (moved right and away from robot)
     (0.05, 0.27),   # 8: triangle (pick failure - to be resolved later)
